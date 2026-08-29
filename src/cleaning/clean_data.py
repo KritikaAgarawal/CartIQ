@@ -53,6 +53,12 @@ def clean_ga4_events(logs):
             log['nulls_fixed'] += null_count
             df[col].fillna('unknown', inplace=True)
             
+        # Ensure session_id is filled with 'unknown_session' if missing
+        if 'session_id' in df.columns:
+            null_count = df['session_id'].isnull().sum()
+            log['nulls_fixed'] += null_count
+            df['session_id'].fillna('unknown_session', inplace=True)
+            
         # 7. Handle impossible negative values for items_value
         # If someone "bought" negative value, it's bad data. We set it to null (np.nan).
         mask_negative = df['items_value'] < 0
@@ -169,6 +175,52 @@ def clean_ad_spend(logs):
     except FileNotFoundError:
         print(f"Error: {file_name} not found in {RAW_DIR}. Skipping.")
 
+def clean_ga4_items(logs):
+    file_name = 'ga4_items.csv'
+    log = initialize_log()
+    
+    try:
+        # 1. Load data
+        df = pd.read_csv(RAW_DIR / file_name)
+        log['rows_in'] = len(df)
+        
+        # 2. Convert dates exactly like ga4_events
+        df['event_date'] = pd.to_datetime(df['event_date'], format='%Y%m%d', errors='coerce').dt.date
+        df['event_timestamp'] = pd.to_datetime(df['event_timestamp'], unit='us', errors='coerce')
+        
+        # 3. Drop rows missing critical item_id
+        df.dropna(subset=['item_id'], inplace=True)
+        
+        # 4. Fill null descriptive columns with 'unknown'
+        for col in ['item_name', 'item_category']:
+            null_count = df[col].isnull().sum()
+            log['nulls_fixed'] += null_count
+            df[col].fillna('unknown', inplace=True)
+            
+        # 5. Fix price (negative or null -> 0.0)
+        mask_bad_price = (df['price'] < 0) | (df['price'].isnull())
+        log['invalid_values_fixed'] += mask_bad_price.sum()
+        df.loc[mask_bad_price, 'price'] = 0.0
+        
+        # 6. Fix quantity (negative or null -> 1)
+        mask_bad_qty = (df['quantity'] < 0) | (df['quantity'].isnull())
+        log['invalid_values_fixed'] += mask_bad_qty.sum()
+        df.loc[mask_bad_qty, 'quantity'] = 1
+        
+        # 7. Drop duplicates based on the compound key of user + event + item
+        initial_len = len(df)
+        df.drop_duplicates(subset=['user_pseudo_id', 'event_name', 'event_timestamp', 'item_id'], inplace=True)
+        log['duplicates_removed'] += (initial_len - len(df))
+        
+        # Save
+        df.to_csv(PROCESSED_DIR / file_name, index=False)
+        log['rows_out'] = len(df)
+        logs[file_name] = log
+        print(f"Successfully cleaned {file_name}")
+        
+    except FileNotFoundError:
+        print(f"Error: {file_name} not found in {RAW_DIR}. Skipping.")
+
 def main():
     # This dictionary will collect logs from all cleaning functions
     logs = {}
@@ -178,6 +230,7 @@ def main():
     clean_marketing_channels(logs)
     clean_campaigns(logs)
     clean_ad_spend(logs)
+    clean_ga4_items(logs)
     
     # If we successfully logged anything, print out the final summary table
     if logs:

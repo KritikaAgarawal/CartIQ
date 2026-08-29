@@ -5,6 +5,8 @@ CREATE TABLE stg_ga4_events (
     event_datetime timestamp,
     event_name text,
     user_pseudo_id text,
+    ga_session_id bigint,
+    session_id text,
     page_location text,
     traffic_source text,
     traffic_medium text,
@@ -43,4 +45,21 @@ CREATE TABLE stg_ad_spend (
     campaign_id integer,
     spend_date date,
     amount numeric
+);
+
+-- Staging table for raw GA4 item-level data
+DROP TABLE IF EXISTS stg_ga4_items CASCADE;
+CREATE TABLE stg_ga4_items (
+    event_date date,
+    event_datetime timestamp,
+    user_pseudo_id text,
+    ga_session_id bigint,
+    session_id text,
+    event_name text,
+    transaction_id text,
+    item_id text,
+    item_name text,
+    item_category text,
+    price numeric,
+    quantity integer
 );

@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from pathlib import Path
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, inspect
 from sqlalchemy.exc import SQLAlchemyError
 
 # Set up absolute paths so the script can be run from anywhere
@@ -45,6 +45,19 @@ def load_csv_to_table(csv_path, table_name, engine):
         df = pd.read_csv(file_path)
         row_count = len(df)
         
+        # 1.5. Make the loader resilient by dropping CSV columns that aren't in the table schema
+        inspector = inspect(engine)
+        if inspector.has_table(table_name):
+            # Get the real list of column names defined in the database
+            db_columns = [col['name'] for col in inspector.get_columns(table_name)]
+            
+            # Compare and drop any extra DataFrame columns
+            cols_to_drop = [col for col in df.columns if col not in db_columns]
+            if cols_to_drop:
+                for col in cols_to_drop:
+                    print(f"Dropping column '{col}' - not present in table {table_name}")
+                df.drop(columns=cols_to_drop, inplace=True)
+        
         # 2. Truncate the table before loading
         # TRUNCATE empties the table instantly without logging every deleted row (unlike DELETE).
         # CASCADE ensures we don't hit errors if other tables depend on this one.
@@ -86,7 +99,8 @@ def main():
         ("data/processed/marketing_channels.csv", "stg_marketing_channels"),
         ("data/processed/campaigns.csv", "stg_campaigns"),
         ("data/processed/ad_spend.csv", "stg_ad_spend"),
-        ("data/processed/ga4_events.csv", "stg_ga4_events")
+        ("data/processed/ga4_events.csv", "stg_ga4_events"),
+        ("data/processed/ga4_items.csv", "stg_ga4_items")
     ]
     
     print("Starting data load into staging tables...\n")

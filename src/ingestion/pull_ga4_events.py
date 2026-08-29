@@ -39,6 +39,7 @@ def pull_ga4_data():
                 event_timestamp,
                 event_name,
                 user_pseudo_id,
+                (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS ga_session_id,
                 (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'page_location') AS page_location,
                 traffic_source.source AS traffic_source,
                 traffic_source.medium AS traffic_medium,
@@ -60,6 +61,9 @@ def pull_ga4_data():
         # A DataFrame is a powerful 2D data structure in Python, similar to a spreadsheet
         df = query_job.to_dataframe()
         print("Query successful!")
+        
+        # Add session_id column by concatenating user_pseudo_id and ga_session_id
+        df['session_id'] = df['user_pseudo_id'] + '_' + df['ga_session_id'].astype(str)
         
         # 6. Ensure the target directory for our raw data exists
         # parents=True means it will create parent folders like 'data' if they don't exist
