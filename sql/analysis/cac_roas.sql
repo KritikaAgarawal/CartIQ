@@ -35,13 +35,14 @@ customer_first_session AS (
     FROM sessions
 ),
 new_customers_by_channel AS (
-    -- 3b. Count the distinct customers acquired by each channel using that rank 1 session.
+    -- 3b. Count the distinct PAYING customers acquired by each channel using that rank 1 session.
     SELECT 
         mc.channel_id,
-        COUNT(DISTINCT cfs.customer_id) AS new_customers
+        COUNT(DISTINCT cfs.customer_id) AS new_paying_customers
     FROM customer_first_session cfs
     JOIN marketing_channels mc ON (cfs.traffic_source || ' / ' || cfs.traffic_medium) = mc.channel_name
     WHERE cfs.session_rank = 1
+      AND EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = cfs.customer_id)
     GROUP BY mc.channel_id
 )
 -- 4. Bring it all together, ensuring every marketing channel is listed via LEFT JOINs.
@@ -52,14 +53,15 @@ SELECT
     COALESCE(sbc.total_spend, 0) AS total_spend,
     COALESCE(obc.total_orders, 0) AS total_orders,
     COALESCE(obc.total_revenue, 0) AS total_revenue,
-    COALESCE(ncb.new_customers, 0) AS new_customers,
+    COALESCE(ncb.new_paying_customers, 0) AS new_paying_customers,
     
     -- CAC and ROAS are mathematically and logically meaningful only for 'paid' channels. 
     -- Organic search, direct traffic, and email (usually) don't have direct ad spend in this context.
     -- Attempting to divide by zero spend on non-paid channels would result in errors or 
     -- infinite ROI, which isn't actionable for budget allocation. Thus, we force NULL.
+    -- Note: CAC is calculated per PAYING customer acquired, not per casual site visitor.
     CASE 
-        WHEN mc.channel_type = 'paid' THEN ROUND((sbc.total_spend / NULLIF(ncb.new_customers, 0))::numeric, 2)
+        WHEN mc.channel_type = 'paid' THEN ROUND((sbc.total_spend / NULLIF(ncb.new_paying_customers, 0))::numeric, 2)
         ELSE NULL 
     END AS cac,
     

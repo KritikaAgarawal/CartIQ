@@ -20,8 +20,8 @@ def generate_marketing_data():
     print(f"Reading {ga4_path}...")
     
     try:
-        # We now read user_pseudo_id as well to calculate real customer volume per channel
-        ga4_df = pd.read_csv(ga4_path, usecols=['user_pseudo_id', 'traffic_source', 'traffic_medium'])
+        # We now read user_pseudo_id and event_name as well to calculate real paying customer volume per channel
+        ga4_df = pd.read_csv(ga4_path, usecols=['user_pseudo_id', 'traffic_source', 'traffic_medium', 'event_name'])
     except FileNotFoundError:
         print(f"Error: {ga4_path} not found. Please run pull_ga4_events.py first.")
         return
@@ -29,8 +29,13 @@ def generate_marketing_data():
     # Drop duplicate rows to get unique combinations of source and medium
     unique_channels = ga4_df.drop_duplicates(subset=['traffic_source', 'traffic_medium']).dropna()
 
-    # Calculate the approximate number of distinct customers per channel
-    customer_counts = ga4_df.groupby(['traffic_source', 'traffic_medium'])['user_pseudo_id'].nunique().to_dict()
+    # Filter only to users who actually made a purchase (event_name == 'purchase')
+    # This reflects PAYING-customer volume, matching how real CAC is calculated 
+    # (CAC = total spend / acquired paying customers, not just casual visitors)
+    paying_users = ga4_df[ga4_df['event_name'] == 'purchase']
+    
+    # Calculate the approximate number of distinct PAYING customers per channel
+    customer_counts = paying_users.groupby(['traffic_source', 'traffic_medium'])['user_pseudo_id'].nunique().to_dict()
 
     # -------------------------------------------------------------------------
     # STEP 2: Build marketing_channels table
