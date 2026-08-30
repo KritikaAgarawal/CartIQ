@@ -21,7 +21,8 @@ orders_by_channel AS (
         SUM(o.order_total) AS total_revenue
     FROM orders o
     JOIN sessions s ON o.session_id = s.session_id
-    JOIN marketing_channels mc ON (s.traffic_source || ' / ' || s.traffic_medium) = mc.channel_name
+    -- Matching is case-insensitive because traffic_source/medium values like '<Other>' can appear with inconsistent casing between pipeline stages.
+    JOIN marketing_channels mc ON LOWER(s.traffic_source || ' / ' || s.traffic_medium) = LOWER(mc.channel_name)
     GROUP BY mc.channel_id
 ),
 customer_first_session AS (
@@ -40,7 +41,8 @@ new_customers_by_channel AS (
         mc.channel_id,
         COUNT(DISTINCT cfs.customer_id) AS new_paying_customers
     FROM customer_first_session cfs
-    JOIN marketing_channels mc ON (cfs.traffic_source || ' / ' || cfs.traffic_medium) = mc.channel_name
+    -- Matching is case-insensitive because traffic_source/medium values like '<Other>' can appear with inconsistent casing between pipeline stages.
+    JOIN marketing_channels mc ON LOWER(cfs.traffic_source || ' / ' || cfs.traffic_medium) = LOWER(mc.channel_name)
     WHERE cfs.session_rank = 1
       AND EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = cfs.customer_id)
     GROUP BY mc.channel_id

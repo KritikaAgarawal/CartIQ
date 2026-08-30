@@ -26,6 +26,12 @@ def generate_marketing_data():
         print(f"Error: {ga4_path} not found. Please run pull_ga4_events.py first.")
         return
 
+    # Fill null sources and mediums with 'unknown' to match the cleaning script.
+    # This keeps channel matching consistent between raw-derived channel definitions 
+    # and the cleaned session data in the marts.
+    ga4_df['traffic_source'] = ga4_df['traffic_source'].fillna('unknown')
+    ga4_df['traffic_medium'] = ga4_df['traffic_medium'].fillna('unknown')
+
     # Drop duplicate rows to get unique combinations of source and medium
     unique_channels = ga4_df.drop_duplicates(subset=['traffic_source', 'traffic_medium']).dropna()
 

@@ -70,9 +70,25 @@ def build_touchpoints():
     # First, reconstruct the channel_name string exactly as it looks in the marketing_channels table
     touchpoints['channel_name'] = touchpoints['traffic_source'].astype(str) + ' / ' + touchpoints['traffic_medium'].astype(str)
     
+
     # Merge on the channels lookup table. Using how='left' ensures that if there's no match, 
     # the row isn't deleted; it just gets a NaN (null) channel_id.
-    touchpoints = pd.merge(touchpoints, channels_df, on='channel_name', how='left')
+    # Matching is case-insensitive because traffic_source/medium values like '<Other>' can appear with inconsistent casing between pipeline stages.
+    
+    # Create temporary lowercase columns for the merge key
+    touchpoints['_merge_channel_name'] = touchpoints['channel_name'].str.lower()
+    channels_df['_merge_channel_name'] = channels_df['channel_name'].str.lower()
+    
+    touchpoints = pd.merge(
+        touchpoints, 
+        channels_df[['channel_id', '_merge_channel_name']], 
+        on='_merge_channel_name', 
+        how='left'
+    )
+    
+    # Clean up the temporary column
+    touchpoints.drop(columns=['_merge_channel_name'], inplace=True)
+    channels_df.drop(columns=['_merge_channel_name'], inplace=True)
     
     # Count how many touchpoints didn't perfectly match a known marketing channel
     unmatched_count = touchpoints['channel_id'].isna().sum()
