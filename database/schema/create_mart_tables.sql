@@ -1,4 +1,5 @@
 -- Drop dependent tables first to respect foreign key constraints
+DROP TABLE IF EXISTS data_quality_log CASCADE;
 DROP TABLE IF EXISTS channel_attribution CASCADE;
 DROP TABLE IF EXISTS customer_touchpoints CASCADE;
 DROP TABLE IF EXISTS ad_spend CASCADE;
@@ -118,4 +119,14 @@ CREATE TABLE channel_attribution (
     attribution_model TEXT,
     attributed_revenue NUMERIC,
     attributed_orders INTEGER
+);
+
+-- One row represents a single data quality check result.
+CREATE TABLE data_quality_log (
+    log_id SERIAL PRIMARY KEY,
+    run_timestamp TIMESTAMP DEFAULT NOW(),
+    check_name TEXT,
+    table_name TEXT,
+    status TEXT,
+    details TEXT
 );
