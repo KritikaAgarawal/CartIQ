@@ -1,4 +1,5 @@
 -- Drop dependent tables first to respect foreign key constraints
+DROP TABLE IF EXISTS channel_attribution CASCADE;
 DROP TABLE IF EXISTS customer_touchpoints CASCADE;
 DROP TABLE IF EXISTS ad_spend CASCADE;
 DROP TABLE IF EXISTS order_items CASCADE;
@@ -108,4 +109,13 @@ CREATE TABLE customer_touchpoints (
     channel_id INTEGER NOT NULL REFERENCES marketing_channels(channel_id),
     touchpoint_timestamp TIMESTAMP NOT NULL,
     touchpoint_order INTEGER NOT NULL
+);
+
+-- One row represents the calculated revenue and order attribution for a channel under a specific model.
+CREATE TABLE channel_attribution (
+    attribution_id SERIAL PRIMARY KEY,
+    channel_id INTEGER REFERENCES marketing_channels(channel_id),
+    attribution_model TEXT,
+    attributed_revenue NUMERIC,
+    attributed_orders INTEGER
 );
