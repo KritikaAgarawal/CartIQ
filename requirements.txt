@@ -6,3 +6,4 @@ python-dotenv
 jupyter
 matplotlib
 seaborn
+ollama
