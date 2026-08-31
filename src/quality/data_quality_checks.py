@@ -5,6 +5,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
+from src.utils.logger import get_logger
+
+logger = get_logger('data_quality_checks')
 
 # Set up paths to safely locate the .env file relative to this script
 # __file__ is the path to this script; parent.parent.parent navigates up to the CartIQ root
@@ -42,7 +45,7 @@ def run_checks():
     try:
         engine = get_engine()
     except Exception as e:
-        print(f"Failed to initialize database engine: {e}")
+        logger.error(f"Failed to initialize database engine: {e}")
         sys.exit(1)
 
     results = []
@@ -165,28 +168,32 @@ def run_checks():
                 })
 
     except SQLAlchemyError as e:
-        print("\n=== Database Error ===")
-        print(f"Failed to execute data quality checks.")
-        print(f"Details: {e}")
+        logger.error("\n=== Database Error ===")
+        logger.error(f"Failed to execute data quality checks.")
+        logger.error(f"Details: {e}")
         sys.exit(1)
     except Exception as e:
-        print("\n=== Unexpected Error ===")
-        print(f"An unexpected error occurred: {e}")
+        logger.error("\n=== Unexpected Error ===")
+        logger.error(f"An unexpected error occurred: {e}")
         sys.exit(1)
 
     # --- Print Report ---
-    print("\n--- Data Quality Check Report ---")
-    print(f"{'TABLE':<15} | {'CHECK NAME':<45} | {'STATUS':<6} | {'DETAILS'}")
-    print("-" * 90)
+    logger.info("\n--- Data Quality Check Report ---")
+    logger.info(f"{'TABLE':<15} | {'CHECK NAME':<45} | {'STATUS':<6} | {'DETAILS'}")
+    logger.info("-" * 90)
     
     passed_count = 0
     for r in results:
-        print(f"{r['table_name']:<15} | {r['check_name']:<45} | {r['status']:<6} | {r['details']}")
+        msg = f"{r['table_name']:<15} | {r['check_name']:<45} | {r['status']:<6} | {r['details']}"
+        if r['status'] == 'FAIL':
+            logger.warning(msg)
+        else:
+            logger.info(msg)
         if r['status'] == 'PASS':
             passed_count += 1
             
-    print("-" * 90)
-    print(f"{passed_count} of {len(results)} checks passed.\n")
+    logger.info("-" * 90)
+    logger.info(f"{passed_count} of {len(results)} checks passed.\n")
 
     # --- Log Results to Database ---
     try:
@@ -200,9 +207,9 @@ def run_checks():
         df = df[['run_timestamp', 'check_name', 'table_name', 'status', 'details']]
         
         df.to_sql('data_quality_log', engine, if_exists='append', index=False)
-        print(f"Logged {len(df)} data quality checks to data_quality_log at {run_timestamp}")
+        logger.info(f"Logged {len(df)} data quality checks to data_quality_log at {run_timestamp}")
     except Exception as e:
-        print(f"Warning: Failed to log data quality checks to database. {e}")
+        logger.error(f"Warning: Failed to log data quality checks to database. {e}")
 
 if __name__ == "__main__":
     run_checks()

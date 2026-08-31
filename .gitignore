@@ -47,3 +47,6 @@ credentials/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Logs
+logs/

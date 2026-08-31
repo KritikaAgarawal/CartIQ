@@ -3,6 +3,9 @@ import pandas as pd
 from pathlib import Path
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
+from src.utils.logger import get_logger
+
+logger = get_logger('calculate_attribution')
 
 # Set up absolute paths so this script can be run from anywhere in the terminal
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -31,7 +34,7 @@ def get_engine():
 
 def calculate_attribution():
     engine = get_engine()
-    print("Reading touchpoints and orders from database...")
+    logger.info("Reading touchpoints and orders from database...")
     
     # 1. Read touchpoints and orders into pandas DataFrames
     # We bring in touchpoint_timestamp and order_date for the time-decay model
@@ -44,7 +47,7 @@ def calculate_attribution():
     # Drop rows where channel_id is null, since we can't attribute revenue to an unknown channel
     touchpoints_df = touchpoints_df.dropna(subset=['channel_id']).copy()
     
-    print("Calculating linear attribution credits...")
+    logger.info("Calculating linear attribution credits...")
     
     # 2. Merge touchpoints with orders
     # This attaches the correct 'order_total' and 'order_date' to every single touchpoint row
@@ -70,19 +73,19 @@ def calculate_attribution():
     final_cols = ['channel_id', 'attribution_model', 'attributed_revenue', 'attributed_orders']
     linear_summary = linear_summary[final_cols].sort_values(by='attributed_revenue', ascending=False)
     
-    print("\n--- Linear Attribution Results ---")
-    print(linear_summary.to_string(index=False))
+    logger.info("\n--- Linear Attribution Results ---")
+    logger.info(linear_summary.to_string(index=False))
     
     # Ensure the directory exists before saving (just in case)
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     linear_output = PROCESSED_DIR / 'attribution_linear.csv'
     linear_summary.to_csv(linear_output, index=False)
-    print(f"\nSuccessfully saved linear attribution results to {linear_output}")
+    logger.info(f"\nSuccessfully saved linear attribution results to {linear_output}")
 
     # =========================================================================
     # TIME DECAY ATTRIBUTION
     # =========================================================================
-    print("\nCalculating time-decay attribution credits...")
+    logger.info("\nCalculating time-decay attribution credits...")
     
     # Ensure dates are in datetime format to subtract them safely
     merged_df['order_date'] = pd.to_datetime(merged_df['order_date'])
@@ -121,25 +124,25 @@ def calculate_attribution():
     decay_summary['attribution_model'] = 'time_decay'
     decay_summary = decay_summary[final_cols].sort_values(by='attributed_revenue', ascending=False)
     
-    print("\n--- Time-Decay Attribution Results ---")
-    print(decay_summary.to_string(index=False))
+    logger.info("\n--- Time-Decay Attribution Results ---")
+    logger.info(decay_summary.to_string(index=False))
     
     decay_output = PROCESSED_DIR / 'attribution_time_decay.csv'
     decay_summary.to_csv(decay_output, index=False)
-    print(f"\nSuccessfully saved time-decay attribution results to {decay_output}")
+    logger.info(f"\nSuccessfully saved time-decay attribution results to {decay_output}")
     
     # =========================================================================
     # LOAD TO DATABASE
     # =========================================================================
-    print("\nLoading combined attribution data to the database...")
+    logger.info("\nLoading combined attribution data to the database...")
     combined_df = pd.concat([linear_summary, decay_summary], ignore_index=True)
     
     with engine.begin() as conn:
         conn.execute(text("TRUNCATE TABLE channel_attribution CASCADE;"))
-        print("Truncated channel_attribution table.")
+        logger.info("Truncated channel_attribution table.")
         
     combined_df.to_sql('channel_attribution', engine, if_exists='append', index=False)
-    print(f"Successfully loaded {len(combined_df)} rows into channel_attribution table.")
+    logger.info(f"Successfully loaded {len(combined_df)} rows into channel_attribution table.")
 
 if __name__ == "__main__":
     calculate_attribution()
