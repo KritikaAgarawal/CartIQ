@@ -56,6 +56,23 @@ The full Data Definition Language (DDL) scripts can be reviewed in [database/sch
 
 *Note: This project deliberately does NOT implement first-click or position-based (U-shaped) models to keep the scope of the analysis focused, interpretable, and defensible.*
 
+## AI Budget Recommendation Agent
+
+1. **Architecture:** Deterministic Python/SQL calculates all numbers (CAC, ROAS, linear-attributed revenue, rule-based recommendation) with ZERO LLM involvement. A local LLM (Llama 3.2 3B, run via Ollama - completely free, no API cost, no external API calls) is used ONLY to explain pre-computed numbers in plain business language.
+2. **Hallucination-Prevention Safeguard:** Every number in the LLM's response is programmatically extracted and cross-checked against the source data before being trusted, with a `validation_status` field (`PASSED`/`FLAGGED`) recorded for every explanation generated.
+3. **Design Rationale:** This design was chosen over "just ask an LLM" because an LLM that calculates its own numbers cannot be trusted for business decisions. Calculation and explanation are deliberately separated - the LLM is a communication layer, not a decision-making layer.
+4. **Real Example Output:**
+   ```text
+   Channel: google / cpc
+   Recommendation: Maintain by 0%
+   Validation Status: FLAGGED - contains unverified number
+   Explanation:
+   The recommendation to maintain spend by 0% is based on the current ROAS of $2702.5 and the average monthly spend of $1656.42, resulting in a revenue gain of $1046.08 ($2702.5 - $1656.42). Given the current ROAS is 1.29, maintaining the spend may provide a continued revenue gain without incurring additional costs. Maintaining the spend by 0%.
+   
+   Recommended percentage change: 0%
+   ```
+   *(Note: As seen above, the LLM attempted to do its own math and hallucinated the number 1046.08, which the programmatic validation successfully caught and flagged.)*
+
 ## Key Findings
 - Multi-touch attribution reveals that assist-heavy channels like "<other> / organic" and "<other> / referral" are undercounted by last-click attribution by roughly 15-25%, while direct traffic and google/organic barely shift between models - suggesting some channels' true value is hidden if only last-click is used for budget decisions.
 - Only one channel (google / cpc) currently has associated ad spend data, yielding a CAC of approximately $38.50 and ROAS of 1.29 - modestly profitable, but a single-channel sample limits confidence; expanding ad spend data to more channels would strengthen this analysis.
