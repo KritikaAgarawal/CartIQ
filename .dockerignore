@@ -1,0 +1,16 @@
+# These exclusions keep the Docker image small by ignoring local virtual environments,
+# large datasets, binary files, and cache directories.
+# Crucially, they also prevent sensitive secrets (like .env or credentials)
+# from being copied into the container image.
+
+venv/
+.git/
+.env
+credentials/
+data/raw/
+data/processed/
+__pycache__/
+.ipynb_checkpoints/
+dashboard/*.pbix
+notebooks/.ipynb_checkpoints/
+docs/screenshots/*.png

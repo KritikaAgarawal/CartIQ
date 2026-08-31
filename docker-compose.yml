@@ -1,0 +1,43 @@
+# The Compose file defines our multi-container application.
+# No 'version' key is needed as we are using the Compose Specification format.
+
+services:
+  # The 'db' service provisions an isolated PostgreSQL database for our containerized application.
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      # Using a placeholder password here for the isolated Docker database.
+      POSTGRES_PASSWORD: cartiq_docker_pw
+      POSTGRES_DB: cartiq
+    ports:
+      # Mapping container port 5432 to host port 5433.
+      # We use 5433 on the host machine to avoid conflicting with your existing local PostgreSQL installation running on port 5432.
+      - "5433:5432"
+    volumes:
+      # Using a named volume to ensure database data persists even if the container is stopped or removed.
+      - cartiq_pgdata:/var/lib/postgresql/data
+
+  # The 'app' service runs our Python application.
+  app:
+    # Build the image from the Dockerfile in the current directory.
+    build: .
+    # Ensure the database starts before the application.
+    depends_on:
+      - db
+    environment:
+      # These environment variables override any settings in your local .env file.
+      # The app connects to the 'db' service using the container port (5432), not the host mapped port.
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: cartiq
+      DB_USER: postgres
+      DB_PASSWORD: cartiq_docker_pw
+    volumes:
+      # Mount the current local directory to /app inside the container.
+      # This allows you to edit code locally and see changes reflected inside the container without rebuilding the image.
+      - .:/app
+
+volumes:
+  # Define the named volume used by the 'db' service.
+  cartiq_pgdata:

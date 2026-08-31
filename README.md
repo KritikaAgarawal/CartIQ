@@ -89,6 +89,8 @@ CartIQ/
 ```
 
 ## How to Run This Project
+
+### Option A: Run Manually
 1. Clone this repository to your local machine.
 2. Create a Python virtual environment and run `pip install -r requirements.txt`.
 3. Copy `.env.example` to `.env` and fill in your PostgreSQL and Google Cloud credentials.
@@ -102,6 +104,14 @@ CartIQ/
 11. Generate the multi-touch models by running the python scripts in `src/attribution/`.
     *(Note: Steps 5, and 9-11 can be fully automated sequentially by running `src/db/rebuild_all.py`)*
 12. Open `dashboard/cartiq_dashboard.pbix` in Power BI Desktop and click "Refresh" to load the live Postgres data.
+
+### Option B: Run with Docker
+1. Clone this repository to your local machine.
+2. Run `docker compose up --build -d` to start a containerized PostgreSQL instance and Python environment.
+3. Run `docker compose exec app python src/db/run_sql_file.py database/schema/create_mart_tables.sql` to set up the mart schema inside the container.
+4. Run `docker compose exec app python src/db/run_sql_file.py sql/staging/create_staging_tables.sql` to set up the staging schema inside the container.
+
+*Note: Commands run inside the container use forward slashes for paths, unlike Windows commands. This containerized database starts empty and is separate from a locally-run setup; full data population requires mounting BigQuery credentials into the container.*
 
 ## Future Improvements
 - Widen the GA4 extraction date range to enable real multi-month cohort retention analysis.
