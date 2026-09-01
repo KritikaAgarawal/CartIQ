@@ -83,6 +83,14 @@ The full Data Definition Language (DDL) scripts can be reviewed in [database/sch
 
    *(Note: As seen above, the LLM attempted to do its own math and hallucinated the number 1046.08, which the programmatic validation successfully caught and flagged.)*
 
+### Known Limitations
+
+This agent serves as evidence of iterative, real validation work rather than hiding flaws. During development, three specific validation findings occurred:
+
+1. An early prompt version allowed the model to compute an unauthorized derived number (converting ROAS to a percentage), which was correctly caught by the number-matching validation.
+2. An early version had the model mislabel a revenue figure as ROAS, correctly caught by a targeted mislabeling check.
+3. The current, most constrained prompt version produces correct, accurately-labeled output, but the mislabeling check's proximity-based logic can still false-positive on correct sentences where a dollar sign happens to appear near the word "ROAS" for an unrelated reason. A smarter, non-proximity-based validation approach (e.g. parsing sentence structure) would be a natural next improvement.
+
 ## Key Findings
 
 - Multi-touch attribution reveals that assist-heavy channels like "<other></other> / organic" and "<other></other> / referral" are undercounted by last-click attribution by roughly 15-25%, while direct traffic and google/organic barely shift between models - suggesting some channels' true value is hidden if only last-click is used for budget decisions.
