@@ -67,17 +67,11 @@ def generate_recommendation_brief(df):
     
     for _, row in df.iterrows():
         # 1. Build the strict prompt string
-        prompt = f"""You are a marketing budget analyst assistant. You must ONLY use the exact numbers provided below. Do NOT invent, estimate, or round differently than shown. Do NOT add any information not given here.
+        prompt = f"""Complete this sentence using ONLY the exact words and numbers given - do not add reasoning, comparisons, or conclusions of your own:
 
-Channel: {row['channel_name']}
-Current Monthly Spend: ${row['total_spend']}
-Revenue (linear attribution): ${row['attributed_revenue_linear']}
-ROAS: {row['roas']}
-CAC: ${row['cac']}
-Data limitation: {row['data_limitation']}
-Rule-based recommendation: {row['recommend_direction']} spend by {row['suggested_change_pct']}%
+'{row['channel_name']} spent ${row['total_spend']} and generated ${row['attributed_revenue_linear']} in attributed revenue, resulting in a ROAS of {row['roas']} and a CAC of ${row['cac']}. Based on this ROAS, the recommendation is to {row['recommend_direction']} spend by {row['suggested_change_pct']}%.'
 
-Write a 2-3 sentence business explanation of why this recommendation makes sense, using ONLY the numbers above. End by restating the exact recommended percentage change."""
+Output ONLY that completed sentence, with the values filled in exactly as given above. Do not add any additional sentences, explanations, or reasoning."""
 
         # 2. Send prompt to local LLM
         try:
@@ -92,11 +86,26 @@ Write a 2-3 sentence business explanation of why this recommendation makes sense
         # 3. Validation Step
         is_valid, bad_num = validate_hallucinations(response_text, prompt)
         
-        if is_valid:
-            validation_status = 'PASSED'
-        else:
+        # Check if ROAS is mislabeled as a dollar amount
+        # This catches a specific failure mode where the model uses a correct number but attaches it to the wrong metric label.
+        roas_mislabeled = False
+        words = response_text.split()
+        for i, word in enumerate(words):
+            if 'ROAS' in word.upper():
+                start = max(0, i - 5)
+                end = min(len(words), i + 6)
+                if any('$' in w for w in words[start:end]):
+                    roas_mislabeled = True
+                    break
+                    
+        if not is_valid:
             validation_status = 'FLAGGED - contains unverified number'
             print(f"WARNING: Channel '{row['channel_name']}' flagged for unverified number: {bad_num}")
+        elif roas_mislabeled:
+            validation_status = 'FLAGGED - ROAS mislabeled as dollar amount'
+            print(f"WARNING: Channel '{row['channel_name']}' flagged for ROAS mislabeled as dollar amount")
+        else:
+            validation_status = 'PASSED'
             
         # 4. Append to results
         results.append({
