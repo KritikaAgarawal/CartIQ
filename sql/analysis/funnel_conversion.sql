@@ -47,3 +47,4 @@ SELECT
     ROUND((purchase_customers::numeric / NULLIF(view_item_customers, 0)) * 100, 2) AS overall_conversion_rate_pct
 FROM funnel_counts
 ORDER BY view_item_customers DESC;
+SELECT * FROM vw_funnel_conversion;

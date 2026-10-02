@@ -44,3 +44,4 @@ FROM product_metrics pm
 JOIN products p ON pm.product_id = p.product_id
 -- 4. Order the results so top-grossing products appear first
 ORDER BY pm.product_revenue DESC;
+SELECT * FROM vw_pricing_analytics;

@@ -77,3 +77,4 @@ LEFT JOIN spend_by_channel sbc ON mc.channel_id = sbc.channel_id
 LEFT JOIN orders_by_channel obc ON mc.channel_id = obc.channel_id
 LEFT JOIN new_customers_by_channel ncb ON mc.channel_id = ncb.channel_id
 ORDER BY total_revenue DESC;
+SELECT * from vw_channel_cac_roas;
